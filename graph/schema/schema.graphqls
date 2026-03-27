@@ -1,0 +1,45 @@
+type Query {
+  airports(first: Int = 25, after: String): AirportConnection!
+  airport(icao: String!): Airport
+  airportByIata(iata: String!): Airport
+}
+
+type Airport {
+  id: ID!
+  icao: String!
+  iata: String
+  name: String!
+  city: String
+  country: String!
+  latitude: Float!
+  longitude: Float!
+  elevation: Int
+  type: AirportType!
+}
+
+enum AirportType {
+  LARGE
+  MEDIUM
+  SMALL
+  HELIPORT
+  SEAPLANE_BASE
+  CLOSED
+}
+
+type AirportConnection {
+  edges: [AirportEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type AirportEdge {
+  cursor: String!
+  node: Airport!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}

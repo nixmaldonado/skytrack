@@ -13,6 +13,16 @@ import (
 	"github.com/nixmaldonado/skytrack/graph/model"
 )
 
+// CreateAirport is the resolver for the createAirport field.
+func (r *mutationResolver) CreateAirport(ctx context.Context, input model.CreateAirportInput) (*model.Airport, error) {
+	return r.Store.Create(input)
+}
+
+// UpdateAirport is the resolver for the updateAirport field.
+func (r *mutationResolver) UpdateAirport(ctx context.Context, icao model.ICAOCode, input model.UpdateAirportInput) (*model.Airport, error) {
+	return r.Store.Update(icao, input)
+}
+
 // Airports is the resolver for the airports field.
 func (r *queryResolver) Airports(ctx context.Context, first *int, after *string) (*model.AirportConnection, error) {
 	limit := 25
@@ -20,9 +30,8 @@ func (r *queryResolver) Airports(ctx context.Context, first *int, after *string)
 		limit = *first
 	}
 
-	airports := hardcodedAirports()
+	airports := r.Store.All()
 
-	// Decode cursor to find starting index
 	startIdx := 0
 	if after != nil {
 		decoded, err := base64.StdEncoding.DecodeString(*after)
@@ -34,7 +43,6 @@ func (r *queryResolver) Airports(ctx context.Context, first *int, after *string)
 		}
 	}
 
-	// Slice the results
 	total := len(airports)
 	if startIdx > total {
 		startIdx = total
@@ -45,7 +53,6 @@ func (r *queryResolver) Airports(ctx context.Context, first *int, after *string)
 	}
 	page := airports[startIdx:endIdx]
 
-	// Build edges
 	edges := make([]model.AirportEdge, len(page))
 	for i, a := range page {
 		cursor := base64.StdEncoding.EncodeToString([]byte(strconv.Itoa(startIdx + i)))
@@ -56,7 +63,6 @@ func (r *queryResolver) Airports(ctx context.Context, first *int, after *string)
 		}
 	}
 
-	// PageInfo
 	hasNext := endIdx < total
 	hasPrev := startIdx > 0
 	var startCursor, endCursor *string
@@ -78,44 +84,20 @@ func (r *queryResolver) Airports(ctx context.Context, first *int, after *string)
 }
 
 // Airport is the resolver for the airport field.
-func (r *queryResolver) Airport(ctx context.Context, icao string) (*model.Airport, error) {
-	for _, a := range hardcodedAirports() {
-		if a.Icao == icao {
-			return &a, nil
-		}
-	}
-	return nil, nil
+func (r *queryResolver) Airport(ctx context.Context, icao model.ICAOCode) (*model.Airport, error) {
+	return r.Store.FindByICAO(icao), nil
 }
 
 // AirportByIata is the resolver for the airportByIata field.
-func (r *queryResolver) AirportByIata(ctx context.Context, iata string) (*model.Airport, error) {
-	for _, a := range hardcodedAirports() {
-		if a.Iata != nil && *a.Iata == iata {
-			return &a, nil
-		}
-	}
-	return nil, nil
+func (r *queryResolver) AirportByIata(ctx context.Context, iata model.IATACode) (*model.Airport, error) {
+	return r.Store.FindByIATA(iata), nil
 }
+
+// Mutation returns MutationResolver implementation.
+func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
+type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
-
-func ptr(s string) *string { return &s }
-func intPtr(i int) *int    { return &i }
-
-func hardcodedAirports() []model.Airport {
-	return []model.Airport{
-		{ID: "1", Icao: "KJFK", Iata: ptr("JFK"), Name: "John F Kennedy International Airport", City: ptr("New York"), Country: "US", Latitude: 40.6398, Longitude: -73.7789, Elevation: intPtr(13), Type: model.AirportTypeLarge},
-		{ID: "2", Icao: "EGLL", Iata: ptr("LHR"), Name: "Heathrow Airport", City: ptr("London"), Country: "GB", Latitude: 51.4706, Longitude: -0.4619, Elevation: intPtr(83), Type: model.AirportTypeLarge},
-		{ID: "3", Icao: "RJTT", Iata: ptr("HND"), Name: "Tokyo Haneda Airport", City: ptr("Tokyo"), Country: "JP", Latitude: 35.5523, Longitude: 139.7798, Elevation: intPtr(35), Type: model.AirportTypeLarge},
-		{ID: "4", Icao: "LFPG", Iata: ptr("CDG"), Name: "Charles de Gaulle Airport", City: ptr("Paris"), Country: "FR", Latitude: 49.0097, Longitude: 2.5479, Elevation: intPtr(392), Type: model.AirportTypeLarge},
-		{ID: "5", Icao: "KLAX", Iata: ptr("LAX"), Name: "Los Angeles International Airport", City: ptr("Los Angeles"), Country: "US", Latitude: 33.9425, Longitude: -118.4081, Elevation: intPtr(126), Type: model.AirportTypeLarge},
-		{ID: "6", Icao: "OMDB", Iata: ptr("DXB"), Name: "Dubai International Airport", City: ptr("Dubai"), Country: "AE", Latitude: 25.2528, Longitude: 55.3644, Elevation: intPtr(62), Type: model.AirportTypeLarge},
-		{ID: "7", Icao: "VHHH", Iata: ptr("HKG"), Name: "Hong Kong International Airport", City: ptr("Hong Kong"), Country: "HK", Latitude: 22.3089, Longitude: 113.9145, Elevation: intPtr(28), Type: model.AirportTypeLarge},
-		{ID: "8", Icao: "WSSS", Iata: ptr("SIN"), Name: "Singapore Changi Airport", City: ptr("Singapore"), Country: "SG", Latitude: 1.3502, Longitude: 103.9944, Elevation: intPtr(22), Type: model.AirportTypeLarge},
-		{ID: "9", Icao: "EDDF", Iata: ptr("FRA"), Name: "Frankfurt Airport", City: ptr("Frankfurt"), Country: "DE", Latitude: 50.0333, Longitude: 8.5706, Elevation: intPtr(364), Type: model.AirportTypeLarge},
-		{ID: "10", Icao: "LEMD", Iata: ptr("MAD"), Name: "Adolfo Suárez Madrid–Barajas Airport", City: ptr("Madrid"), Country: "ES", Latitude: 40.4719, Longitude: -3.5626, Elevation: intPtr(2000), Type: model.AirportTypeLarge},
-	}
-}

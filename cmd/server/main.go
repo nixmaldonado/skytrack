@@ -7,6 +7,7 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
+
 	"github.com/nixmaldonado/skytrack/graph"
 )
 
@@ -16,7 +17,11 @@ func main() {
 		port = "8080"
 	}
 
-	srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{}}))
+	srv := handler.New(graph.NewExecutableSchema(graph.Config{
+		Resolvers: &graph.Resolver{
+			Store: graph.NewAirportStore(),
+		},
+	}))
 
 	http.Handle("/", playground.Handler("SkyTrack", "/query"))
 	http.Handle("/query", srv)

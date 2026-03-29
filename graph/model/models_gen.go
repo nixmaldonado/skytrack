@@ -11,8 +11,8 @@ import (
 
 type Airport struct {
 	ID        string      `json:"id"`
-	Icao      string      `json:"icao"`
-	Iata      *string     `json:"iata,omitempty"`
+	Icao      ICAOCode    `json:"icao"`
+	Iata      *IATACode   `json:"iata,omitempty"`
 	Name      string      `json:"name"`
 	City      *string     `json:"city,omitempty"`
 	Country   string      `json:"country"`
@@ -33,6 +33,21 @@ type AirportEdge struct {
 	Node   *Airport `json:"node"`
 }
 
+type CreateAirportInput struct {
+	Icao      ICAOCode    `json:"icao"`
+	Iata      *IATACode   `json:"iata,omitempty"`
+	Name      string      `json:"name"`
+	City      *string     `json:"city,omitempty"`
+	Country   string      `json:"country"`
+	Latitude  float64     `json:"latitude"`
+	Longitude float64     `json:"longitude"`
+	Elevation *int        `json:"elevation,omitempty"`
+	Type      AirportType `json:"type"`
+}
+
+type Mutation struct {
+}
+
 type PageInfo struct {
 	HasNextPage     bool    `json:"hasNextPage"`
 	HasPreviousPage bool    `json:"hasPreviousPage"`
@@ -41,6 +56,17 @@ type PageInfo struct {
 }
 
 type Query struct {
+}
+
+type UpdateAirportInput struct {
+	Iata      *IATACode    `json:"iata,omitempty"`
+	Name      *string      `json:"name,omitempty"`
+	City      *string      `json:"city,omitempty"`
+	Country   *string      `json:"country,omitempty"`
+	Latitude  *float64     `json:"latitude,omitempty"`
+	Longitude *float64     `json:"longitude,omitempty"`
+	Elevation *int         `json:"elevation,omitempty"`
+	Type      *AirportType `json:"type,omitempty"`
 }
 
 type AirportType string

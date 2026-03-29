@@ -19,3 +19,11 @@ autobind:
   - github.com/nixmaldonado/skytrack/graph/model
 
 omit_slice_element_pointers: true
+
+models:
+  ICAOCode:
+    model:
+      - github.com/nixmaldonado/skytrack/graph/model.ICAOCode
+  IATACode:
+    model:
+      - github.com/nixmaldonado/skytrack/graph/model.IATACode

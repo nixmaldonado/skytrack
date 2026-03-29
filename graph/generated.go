@@ -28,6 +28,7 @@ func NewExecutableSchema(cfg Config) graphql.ExecutableSchema {
 type Config = graphql.Config[ResolverRoot, DirectiveRoot, ComplexityRoot]
 
 type ResolverRoot interface {
+	Mutation() MutationResolver
 	Query() QueryResolver
 }
 
@@ -59,6 +60,11 @@ type ComplexityRoot struct {
 		Node   func(childComplexity int) int
 	}
 
+	Mutation struct {
+		CreateAirport func(childComplexity int, input model.CreateAirportInput) int
+		UpdateAirport func(childComplexity int, icao model.ICAOCode, input model.UpdateAirportInput) int
+	}
+
 	PageInfo struct {
 		EndCursor       func(childComplexity int) int
 		HasNextPage     func(childComplexity int) int
@@ -67,16 +73,20 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		Airport       func(childComplexity int, icao string) int
-		AirportByIata func(childComplexity int, iata string) int
+		Airport       func(childComplexity int, icao model.ICAOCode) int
+		AirportByIata func(childComplexity int, iata model.IATACode) int
 		Airports      func(childComplexity int, first *int, after *string) int
 	}
 }
 
+type MutationResolver interface {
+	CreateAirport(ctx context.Context, input model.CreateAirportInput) (*model.Airport, error)
+	UpdateAirport(ctx context.Context, icao model.ICAOCode, input model.UpdateAirportInput) (*model.Airport, error)
+}
 type QueryResolver interface {
 	Airports(ctx context.Context, first *int, after *string) (*model.AirportConnection, error)
-	Airport(ctx context.Context, icao string) (*model.Airport, error)
-	AirportByIata(ctx context.Context, iata string) (*model.Airport, error)
+	Airport(ctx context.Context, icao model.ICAOCode) (*model.Airport, error)
+	AirportByIata(ctx context.Context, iata model.IATACode) (*model.Airport, error)
 }
 
 type executableSchema graphql.ExecutableSchemaState[ResolverRoot, DirectiveRoot, ComplexityRoot]
@@ -186,6 +196,29 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.AirportEdge.Node(childComplexity), true
 
+	case "Mutation.createAirport":
+		if e.ComplexityRoot.Mutation.CreateAirport == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createAirport_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CreateAirport(childComplexity, args["input"].(model.CreateAirportInput)), true
+	case "Mutation.updateAirport":
+		if e.ComplexityRoot.Mutation.UpdateAirport == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateAirport_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UpdateAirport(childComplexity, args["icao"].(model.ICAOCode), args["input"].(model.UpdateAirportInput)), true
+
 	case "PageInfo.endCursor":
 		if e.ComplexityRoot.PageInfo.EndCursor == nil {
 			break
@@ -221,7 +254,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Query.Airport(childComplexity, args["icao"].(string)), true
+		return e.ComplexityRoot.Query.Airport(childComplexity, args["icao"].(model.ICAOCode)), true
 	case "Query.airportByIata":
 		if e.ComplexityRoot.Query.AirportByIata == nil {
 			break
@@ -232,7 +265,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Query.AirportByIata(childComplexity, args["iata"].(string)), true
+		return e.ComplexityRoot.Query.AirportByIata(childComplexity, args["iata"].(model.IATACode)), true
 	case "Query.airports":
 		if e.ComplexityRoot.Query.Airports == nil {
 			break
@@ -252,7 +285,10 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	opCtx := graphql.GetOperationContext(ctx)
 	ec := newExecutionContext(opCtx, e, make(chan graphql.DeferredResult))
-	inputUnmarshalMap := graphql.BuildUnmarshalerMap()
+	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputCreateAirportInput,
+		ec.unmarshalInputUpdateAirportInput,
+	)
 	first := true
 
 	switch opCtx.Operation.Operation {
@@ -285,6 +321,21 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 			}
 
 			return &response
+		}
+	case ast.Mutation:
+		return func(ctx context.Context) *graphql.Response {
+			if !first {
+				return nil
+			}
+			first = false
+			ctx = graphql.WithUnmarshalerMap(ctx, inputUnmarshalMap)
+			data := ec._Mutation(ctx, opCtx.Operation.SelectionSet)
+			var buf bytes.Buffer
+			data.MarshalGQL(&buf)
+
+			return &graphql.Response{
+				Data: buf.Bytes(),
+			}
 		}
 
 	default:
@@ -331,6 +382,33 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
 // region    ***************************** args.gotpl *****************************
 
+func (ec *executionContext) field_Mutation_createAirport_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCreateAirportInput2githubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐCreateAirportInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateAirport_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "icao", ec.unmarshalNICAOCode2githubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐICAOCode)
+	if err != nil {
+		return nil, err
+	}
+	args["icao"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateAirportInput2githubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐUpdateAirportInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -345,7 +423,7 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 func (ec *executionContext) field_Query_airportByIata_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "iata", ec.unmarshalNString2string)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "iata", ec.unmarshalNIATACode2githubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐIATACode)
 	if err != nil {
 		return nil, err
 	}
@@ -356,7 +434,7 @@ func (ec *executionContext) field_Query_airportByIata_args(ctx context.Context, 
 func (ec *executionContext) field_Query_airport_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "icao", ec.unmarshalNString2string)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "icao", ec.unmarshalNICAOCode2githubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐICAOCode)
 	if err != nil {
 		return nil, err
 	}
@@ -471,7 +549,7 @@ func (ec *executionContext) _Airport_icao(ctx context.Context, field graphql.Col
 			return obj.Icao, nil
 		},
 		nil,
-		ec.marshalNString2string,
+		ec.marshalNICAOCode2githubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐICAOCode,
 		true,
 		true,
 	)
@@ -484,7 +562,7 @@ func (ec *executionContext) fieldContext_Airport_icao(_ context.Context, field g
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type ICAOCode does not have child fields")
 		},
 	}
 	return fc, nil
@@ -500,7 +578,7 @@ func (ec *executionContext) _Airport_iata(ctx context.Context, field graphql.Col
 			return obj.Iata, nil
 		},
 		nil,
-		ec.marshalOString2ᚖstring,
+		ec.marshalOIATACode2ᚖgithubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐIATACode,
 		true,
 		false,
 	)
@@ -513,7 +591,7 @@ func (ec *executionContext) fieldContext_Airport_iata(_ context.Context, field g
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type IATACode does not have child fields")
 		},
 	}
 	return fc, nil
@@ -905,6 +983,132 @@ func (ec *executionContext) fieldContext_AirportEdge_node(_ context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_createAirport(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_createAirport,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CreateAirport(ctx, fc.Args["input"].(model.CreateAirportInput))
+		},
+		nil,
+		ec.marshalNAirport2ᚖgithubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐAirport,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_createAirport(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Airport_id(ctx, field)
+			case "icao":
+				return ec.fieldContext_Airport_icao(ctx, field)
+			case "iata":
+				return ec.fieldContext_Airport_iata(ctx, field)
+			case "name":
+				return ec.fieldContext_Airport_name(ctx, field)
+			case "city":
+				return ec.fieldContext_Airport_city(ctx, field)
+			case "country":
+				return ec.fieldContext_Airport_country(ctx, field)
+			case "latitude":
+				return ec.fieldContext_Airport_latitude(ctx, field)
+			case "longitude":
+				return ec.fieldContext_Airport_longitude(ctx, field)
+			case "elevation":
+				return ec.fieldContext_Airport_elevation(ctx, field)
+			case "type":
+				return ec.fieldContext_Airport_type(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Airport", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createAirport_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateAirport(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_updateAirport,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UpdateAirport(ctx, fc.Args["icao"].(model.ICAOCode), fc.Args["input"].(model.UpdateAirportInput))
+		},
+		nil,
+		ec.marshalNAirport2ᚖgithubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐAirport,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateAirport(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Airport_id(ctx, field)
+			case "icao":
+				return ec.fieldContext_Airport_icao(ctx, field)
+			case "iata":
+				return ec.fieldContext_Airport_iata(ctx, field)
+			case "name":
+				return ec.fieldContext_Airport_name(ctx, field)
+			case "city":
+				return ec.fieldContext_Airport_city(ctx, field)
+			case "country":
+				return ec.fieldContext_Airport_country(ctx, field)
+			case "latitude":
+				return ec.fieldContext_Airport_latitude(ctx, field)
+			case "longitude":
+				return ec.fieldContext_Airport_longitude(ctx, field)
+			case "elevation":
+				return ec.fieldContext_Airport_elevation(ctx, field)
+			case "type":
+				return ec.fieldContext_Airport_type(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Airport", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateAirport_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PageInfo_hasNextPage(ctx context.Context, field graphql.CollectedField, obj *model.PageInfo) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -1078,7 +1282,7 @@ func (ec *executionContext) _Query_airport(ctx context.Context, field graphql.Co
 		ec.fieldContext_Query_airport,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().Airport(ctx, fc.Args["icao"].(string))
+			return ec.Resolvers.Query().Airport(ctx, fc.Args["icao"].(model.ICAOCode))
 		},
 		nil,
 		ec.marshalOAirport2ᚖgithubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐAirport,
@@ -1141,7 +1345,7 @@ func (ec *executionContext) _Query_airportByIata(ctx context.Context, field grap
 		ec.fieldContext_Query_airportByIata,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().AirportByIata(ctx, fc.Args["iata"].(string))
+			return ec.Resolvers.Query().AirportByIata(ctx, fc.Args["iata"].(model.IATACode))
 		},
 		nil,
 		ec.marshalOAirport2ᚖgithubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐAirport,
@@ -2750,6 +2954,171 @@ func (ec *executionContext) fieldContext___Type_isOneOf(_ context.Context, field
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputCreateAirportInput(ctx context.Context, obj any) (model.CreateAirportInput, error) {
+	var it model.CreateAirportInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"icao", "iata", "name", "city", "country", "latitude", "longitude", "elevation", "type"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "icao":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("icao"))
+			data, err := ec.unmarshalNICAOCode2githubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐICAOCode(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Icao = data
+		case "iata":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("iata"))
+			data, err := ec.unmarshalOIATACode2ᚖgithubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐIATACode(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Iata = data
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "city":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("city"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.City = data
+		case "country":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("country"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Country = data
+		case "latitude":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("latitude"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Latitude = data
+		case "longitude":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("longitude"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Longitude = data
+		case "elevation":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("elevation"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Elevation = data
+		case "type":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			data, err := ec.unmarshalNAirportType2githubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐAirportType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Type = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUpdateAirportInput(ctx context.Context, obj any) (model.UpdateAirportInput, error) {
+	var it model.UpdateAirportInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"iata", "name", "city", "country", "latitude", "longitude", "elevation", "type"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "iata":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("iata"))
+			data, err := ec.unmarshalOIATACode2ᚖgithubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐIATACode(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Iata = data
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "city":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("city"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.City = data
+		case "country":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("country"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Country = data
+		case "latitude":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("latitude"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Latitude = data
+		case "longitude":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("longitude"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Longitude = data
+		case "elevation":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("elevation"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Elevation = data
+		case "type":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			data, err := ec.unmarshalOAirportType2ᚖgithubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐAirportType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Type = data
+		}
+	}
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -2900,6 +3269,62 @@ func (ec *executionContext) _AirportEdge(ctx context.Context, sel ast.SelectionS
 			}
 		case "node":
 			out.Values[i] = ec._AirportEdge_node(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var mutationImplementors = []string{"Mutation"}
+
+func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, mutationImplementors)
+	ctx = graphql.WithFieldContext(ctx, &graphql.FieldContext{
+		Object: "Mutation",
+	})
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		innerCtx := graphql.WithRootFieldContext(ctx, &graphql.RootFieldContext{
+			Object: field.Name,
+			Field:  field,
+		})
+
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Mutation")
+		case "createAirport":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createAirport(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateAirport":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateAirport(ctx, field)
+			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -3419,6 +3844,10 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 
 // region    ***************************** type.gotpl *****************************
 
+func (ec *executionContext) marshalNAirport2githubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐAirport(ctx context.Context, sel ast.SelectionSet, v model.Airport) graphql.Marshaler {
+	return ec._Airport(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalNAirport2ᚖgithubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐAirport(ctx context.Context, sel ast.SelectionSet, v *model.Airport) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -3489,6 +3918,11 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
+func (ec *executionContext) unmarshalNCreateAirportInput2githubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐCreateAirportInput(ctx context.Context, v any) (model.CreateAirportInput, error) {
+	res, err := ec.unmarshalInputCreateAirportInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v any) (float64, error) {
 	res, err := graphql.UnmarshalFloatContext(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -3503,6 +3937,38 @@ func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.S
 		}
 	}
 	return graphql.WrapContextMarshaler(ctx, res)
+}
+
+func (ec *executionContext) unmarshalNIATACode2githubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐIATACode(ctx context.Context, v any) (model.IATACode, error) {
+	res, err := model.UnmarshalIATACode(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNIATACode2githubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐIATACode(ctx context.Context, sel ast.SelectionSet, v model.IATACode) graphql.Marshaler {
+	_ = sel
+	res := model.MarshalIATACode(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
+func (ec *executionContext) unmarshalNICAOCode2githubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐICAOCode(ctx context.Context, v any) (model.ICAOCode, error) {
+	res, err := model.UnmarshalICAOCode(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNICAOCode2githubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐICAOCode(ctx context.Context, sel ast.SelectionSet, v model.ICAOCode) graphql.Marshaler {
+	_ = sel
+	res := model.MarshalICAOCode(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
 }
 
 func (ec *executionContext) unmarshalNID2string(ctx context.Context, v any) (string, error) {
@@ -3561,6 +4027,11 @@ func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.S
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) unmarshalNUpdateAirportInput2githubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐUpdateAirportInput(ctx context.Context, v any) (model.UpdateAirportInput, error) {
+	res, err := ec.unmarshalInputUpdateAirportInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {
@@ -3711,6 +4182,22 @@ func (ec *executionContext) marshalOAirport2ᚖgithubᚗcomᚋnixmaldonadoᚋsky
 	return ec._Airport(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalOAirportType2ᚖgithubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐAirportType(ctx context.Context, v any) (*model.AirportType, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(model.AirportType)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOAirportType2ᚖgithubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐAirportType(ctx context.Context, sel ast.SelectionSet, v *model.AirportType) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
 func (ec *executionContext) unmarshalOBoolean2bool(ctx context.Context, v any) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -3738,6 +4225,41 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	_ = sel
 	_ = ctx
 	res := graphql.MarshalBoolean(*v)
+	return res
+}
+
+func (ec *executionContext) unmarshalOFloat2ᚖfloat64(ctx context.Context, v any) (*float64, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalFloatContext(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOFloat2ᚖfloat64(ctx context.Context, sel ast.SelectionSet, v *float64) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	res := graphql.MarshalFloatContext(*v)
+	return graphql.WrapContextMarshaler(ctx, res)
+}
+
+func (ec *executionContext) unmarshalOIATACode2ᚖgithubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐIATACode(ctx context.Context, v any) (*model.IATACode, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := model.UnmarshalIATACode(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOIATACode2ᚖgithubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐIATACode(ctx context.Context, sel ast.SelectionSet, v *model.IATACode) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	_ = ctx
+	res := model.MarshalIATACode(*v)
 	return res
 }
 

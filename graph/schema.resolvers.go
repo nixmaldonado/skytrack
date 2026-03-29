@@ -93,6 +93,12 @@ func (r *queryResolver) AirportByIata(ctx context.Context, iata model.IATACode) 
 	return r.Store.FindByIATA(iata), nil
 }
 
+// SearchAirports is the resolver for the searchAirports field.
+func (r *queryResolver) SearchAirports(ctx context.Context, query string) ([]model.Airport, error) {
+	result := r.Store.Search(query)
+	return result, nil
+}
+
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 

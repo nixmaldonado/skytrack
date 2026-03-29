@@ -5,6 +5,7 @@ type Query {
   airports(first: Int = 25, after: String): AirportConnection!
   airport(icao: ICAOCode!): Airport
   airportByIata(iata: IATACode!): Airport
+  searchAirports(query: String!): [Airport!]!
 }
 
 type Mutation {

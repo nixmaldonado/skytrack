@@ -3,6 +3,7 @@ package graph
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/nixmaldonado/skytrack/graph/model"
@@ -131,4 +132,24 @@ func (s *AirportStore) Update(icao model.ICAOCode, input model.UpdateAirportInpu
 		}
 	}
 	return nil, fmt.Errorf("airport with ICAO code %q not found", icao)
+}
+
+func (s *AirportStore) Search(query string) []model.Airport {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	q := strings.ToLower(query)
+	var results []model.Airport
+	for _, a := range s.airports {
+		if strings.Contains(strings.ToLower(a.Name), q) {
+			results = append(results, a)
+			continue
+		}
+
+		if a.City != nil && strings.Contains(strings.ToLower(*a.City), q) {
+			results = append(results, a)
+		}
+	}
+
+	return results
 }

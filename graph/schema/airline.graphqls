@@ -1,0 +1,7 @@
+type Airline {
+  id: ID!
+  icao: String!
+  iata: String
+  name: String!
+  country: String!
+}

@@ -6,5 +6,5 @@ package graph
 // here.
 
 type Resolver struct {
-	Store *AirportStore
+	Store *Store
 }

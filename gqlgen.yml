@@ -27,3 +27,11 @@ models:
   IATACode:
     model:
       - github.com/nixmaldonado/skytrack/graph/model.IATACode
+  Flight:
+    fields:
+      airline:
+        resolver: true
+      departureAirport:
+        resolver: true
+      arrivalAirport:
+        resolver: true

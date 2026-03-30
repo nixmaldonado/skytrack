@@ -9,6 +9,14 @@ import (
 	"strconv"
 )
 
+type Airline struct {
+	ID      string  `json:"id"`
+	Icao    string  `json:"icao"`
+	Iata    *string `json:"iata,omitempty"`
+	Name    string  `json:"name"`
+	Country string  `json:"country"`
+}
+
 type Airport struct {
 	ID        string      `json:"id"`
 	Icao      ICAOCode    `json:"icao"`
@@ -43,6 +51,15 @@ type CreateAirportInput struct {
 	Longitude float64     `json:"longitude"`
 	Elevation *int        `json:"elevation,omitempty"`
 	Type      AirportType `json:"type"`
+}
+
+type Flight struct {
+	ID               string       `json:"id"`
+	Callsign         string       `json:"callsign"`
+	Airline          *Airline     `json:"airline,omitempty"`
+	DepartureAirport *Airport     `json:"departureAirport,omitempty"`
+	ArrivalAirport   *Airport     `json:"arrivalAirport,omitempty"`
+	Status           FlightStatus `json:"status"`
 }
 
 type Mutation struct {
@@ -127,6 +144,65 @@ func (e *AirportType) UnmarshalJSON(b []byte) error {
 }
 
 func (e AirportType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type FlightStatus string
+
+const (
+	FlightStatusScheduled FlightStatus = "SCHEDULED"
+	FlightStatusActive    FlightStatus = "ACTIVE"
+	FlightStatusLanded    FlightStatus = "LANDED"
+	FlightStatusCancelled FlightStatus = "CANCELLED"
+)
+
+var AllFlightStatus = []FlightStatus{
+	FlightStatusScheduled,
+	FlightStatusActive,
+	FlightStatusLanded,
+	FlightStatusCancelled,
+}
+
+func (e FlightStatus) IsValid() bool {
+	switch e {
+	case FlightStatusScheduled, FlightStatusActive, FlightStatusLanded, FlightStatusCancelled:
+		return true
+	}
+	return false
+}
+
+func (e FlightStatus) String() string {
+	return string(e)
+}
+
+func (e *FlightStatus) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = FlightStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid FlightStatus", str)
+	}
+	return nil
+}
+
+func (e FlightStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *FlightStatus) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e FlightStatus) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

@@ -1,73 +1,8 @@
 scalar ICAOCode
 scalar IATACode
 
-type Query {
-  airports(first: Int = 25, after: String): AirportConnection!
-  airport(icao: ICAOCode!): Airport
-  airportByIata(iata: IATACode!): Airport
-  searchAirports(query: String!): [Airport!]!
-}
-
-type Mutation {
-  createAirport(input: CreateAirportInput!): Airport!
-  updateAirport(icao: ICAOCode!, input: UpdateAirportInput!): Airport!
-}
-
-input CreateAirportInput {
-  icao: ICAOCode!
-  iata: IATACode
-  name: String!
-  city: String
-  country: String!
-  latitude: Float!
-  longitude: Float!
-  elevation: Int
-  type: AirportType!
-}
-
-input UpdateAirportInput {
-  iata: IATACode
-  name: String
-  city: String
-  country: String
-  latitude: Float
-  longitude: Float
-  elevation: Int
-  type: AirportType
-}
-
-type Airport {
-  id: ID!
-  icao: ICAOCode!
-  iata: IATACode
-  name: String!
-  city: String
-  country: String!
-  latitude: Float!
-  longitude: Float!
-  elevation: Int
-  type: AirportType!
-}
-
-enum AirportType {
-  LARGE
-  MEDIUM
-  SMALL
-  HELIPORT
-  SEAPLANE_BASE
-  CLOSED
-}
-
-type AirportConnection {
-  edges: [AirportEdge!]!
-  pageInfo: PageInfo!
-  totalCount: Int!
-}
-
-type AirportEdge {
-  cursor: String!
-  node: Airport!
-}
+type Query
+type Mutation
 
 type PageInfo {
   hasNextPage: Boolean!

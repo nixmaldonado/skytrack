@@ -21,7 +21,7 @@ func main() {
 
 	srv := handler.New(graph.NewExecutableSchema(graph.Config{
 		Resolvers: &graph.Resolver{
-			Store: graph.NewAirportStore(),
+			Store: graph.NewStore(),
 		},
 	}))
 	srv.AddTransport(transport.Options{})

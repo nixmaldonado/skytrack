@@ -1,0 +1,19 @@
+extend type Query {
+  flights: [Flight!]!
+}
+
+type Flight {
+  id: ID!
+  callsign: String!
+  airline: Airline
+  departureAirport: Airport
+  arrivalAirport: Airport
+  status: FlightStatus!
+}
+
+enum FlightStatus {
+  SCHEDULED
+  ACTIVE
+  LANDED
+  CANCELLED
+}

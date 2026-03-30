@@ -9,18 +9,32 @@ import (
 	"github.com/nixmaldonado/skytrack/graph/model"
 )
 
-type AirportStore struct {
+type Store struct {
 	mu       sync.RWMutex
 	airports []model.Airport
+	airlines []model.Airline
+	flights  []flight
 	nextID   int
+	log      func(string) // logs "database queries" to demonstrate N+1
 }
 
-func NewAirportStore() *AirportStore {
+// flight is internal — stores IDs for relationships instead of resolved objects.
+type flight struct {
+	ID                 string
+	Callsign           string
+	AirlineID          string
+	DepartureAirportID string
+	ArrivalAirportID   string
+	Status             model.FlightStatus
+}
+
+func NewStore() *Store {
 	iata := func(s string) *model.IATACode { c := model.IATACode(s); return &c }
 	city := func(s string) *string { return &s }
 	elev := func(i int) *int { return &i }
+	str := func(s string) *string { return &s }
 
-	store := &AirportStore{
+	store := &Store{
 		airports: []model.Airport{
 			{ID: "1", Icao: "KJFK", Iata: iata("JFK"), Name: "John F Kennedy International Airport", City: city("New York"), Country: "US", Latitude: 40.6398, Longitude: -73.7789, Elevation: elev(13), Type: model.AirportTypeLarge},
 			{ID: "2", Icao: "EGLL", Iata: iata("LHR"), Name: "Heathrow Airport", City: city("London"), Country: "GB", Latitude: 51.4706, Longitude: -0.4619, Elevation: elev(83), Type: model.AirportTypeLarge},
@@ -33,22 +47,44 @@ func NewAirportStore() *AirportStore {
 			{ID: "9", Icao: "EDDF", Iata: iata("FRA"), Name: "Frankfurt Airport", City: city("Frankfurt"), Country: "DE", Latitude: 50.0333, Longitude: 8.5706, Elevation: elev(364), Type: model.AirportTypeLarge},
 			{ID: "10", Icao: "LEMD", Iata: iata("MAD"), Name: "Adolfo Suárez Madrid–Barajas Airport", City: city("Madrid"), Country: "ES", Latitude: 40.4719, Longitude: -3.5626, Elevation: elev(2000), Type: model.AirportTypeLarge},
 		},
+		airlines: []model.Airline{
+			{ID: "1", Icao: "AAL", Iata: str("AA"), Name: "American Airlines", Country: "US"},
+			{ID: "2", Icao: "BAW", Iata: str("BA"), Name: "British Airways", Country: "GB"},
+			{ID: "3", Icao: "UAE", Iata: str("EK"), Name: "Emirates", Country: "AE"},
+			{ID: "4", Icao: "DLH", Iata: str("LH"), Name: "Lufthansa", Country: "DE"},
+			{ID: "5", Icao: "AFR", Iata: str("AF"), Name: "Air France", Country: "FR"},
+		},
+		flights: []flight{
+			{ID: "1", Callsign: "AAL100", AirlineID: "1", DepartureAirportID: "1", ArrivalAirportID: "2", Status: model.FlightStatusActive},
+			{ID: "2", Callsign: "BAW178", AirlineID: "2", DepartureAirportID: "2", ArrivalAirportID: "1", Status: model.FlightStatusActive},
+			{ID: "3", Callsign: "UAE201", AirlineID: "3", DepartureAirportID: "6", ArrivalAirportID: "3", Status: model.FlightStatusScheduled},
+			{ID: "4", Callsign: "DLH456", AirlineID: "4", DepartureAirportID: "9", ArrivalAirportID: "5", Status: model.FlightStatusActive},
+			{ID: "5", Callsign: "AFR662", AirlineID: "5", DepartureAirportID: "4", ArrivalAirportID: "7", Status: model.FlightStatusLanded},
+			{ID: "6", Callsign: "AAL455", AirlineID: "1", DepartureAirportID: "5", ArrivalAirportID: "8", Status: model.FlightStatusScheduled},
+			{ID: "7", Callsign: "BAW015", AirlineID: "2", DepartureAirportID: "2", ArrivalAirportID: "8", Status: model.FlightStatusActive},
+			{ID: "8", Callsign: "UAE773", AirlineID: "3", DepartureAirportID: "6", ArrivalAirportID: "10", Status: model.FlightStatusActive},
+		},
 		nextID: 11,
+		log:    func(msg string) { fmt.Println("📊 " + msg) },
 	}
 	return store
 }
 
-func (s *AirportStore) All() []model.Airport {
+// ── Airport methods ──
+
+func (s *Store) All() []model.Airport {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	s.log("SELECT * FROM airports")
 	result := make([]model.Airport, len(s.airports))
 	copy(result, s.airports)
 	return result
 }
 
-func (s *AirportStore) FindByICAO(icao model.ICAOCode) *model.Airport {
+func (s *Store) FindByICAO(icao model.ICAOCode) *model.Airport {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	s.log(fmt.Sprintf("SELECT * FROM airports WHERE icao = '%s'", icao))
 	for _, a := range s.airports {
 		if a.Icao == icao {
 			cp := a
@@ -58,9 +94,10 @@ func (s *AirportStore) FindByICAO(icao model.ICAOCode) *model.Airport {
 	return nil
 }
 
-func (s *AirportStore) FindByIATA(iata model.IATACode) *model.Airport {
+func (s *Store) FindByIATA(iata model.IATACode) *model.Airport {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	s.log(fmt.Sprintf("SELECT * FROM airports WHERE iata = '%s'", iata))
 	for _, a := range s.airports {
 		if a.Iata != nil && *a.Iata == iata {
 			cp := a
@@ -70,7 +107,20 @@ func (s *AirportStore) FindByIATA(iata model.IATACode) *model.Airport {
 	return nil
 }
 
-func (s *AirportStore) Create(input model.CreateAirportInput) (*model.Airport, error) {
+func (s *Store) FindAirportByID(id string) *model.Airport {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	s.log(fmt.Sprintf("SELECT * FROM airports WHERE id = '%s'", id))
+	for _, a := range s.airports {
+		if a.ID == id {
+			cp := a
+			return &cp
+		}
+	}
+	return nil
+}
+
+func (s *Store) Create(input model.CreateAirportInput) (*model.Airport, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -97,7 +147,7 @@ func (s *AirportStore) Create(input model.CreateAirportInput) (*model.Airport, e
 	return &airport, nil
 }
 
-func (s *AirportStore) Update(icao model.ICAOCode, input model.UpdateAirportInput) (*model.Airport, error) {
+func (s *Store) Update(icao model.ICAOCode, input model.UpdateAirportInput) (*model.Airport, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -134,7 +184,7 @@ func (s *AirportStore) Update(icao model.ICAOCode, input model.UpdateAirportInpu
 	return nil, fmt.Errorf("airport with ICAO code %q not found", icao)
 }
 
-func (s *AirportStore) Search(query string) []model.Airport {
+func (s *Store) Search(query string) []model.Airport {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -152,4 +202,72 @@ func (s *AirportStore) Search(query string) []model.Airport {
 	}
 
 	return results
+}
+
+// ── Airline methods ──
+
+func (s *Store) FindAirlineByID(id string) *model.Airline {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	s.log(fmt.Sprintf("SELECT * FROM airlines WHERE id = '%s'", id))
+	for _, a := range s.airlines {
+		if a.ID == id {
+			cp := a
+			return &cp
+		}
+	}
+	return nil
+}
+
+// ── Flight methods ──
+
+func (s *Store) AllFlights() []model.Flight {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	s.log("SELECT * FROM flights")
+	result := make([]model.Flight, len(s.flights))
+	for i, f := range s.flights {
+		result[i] = model.Flight{
+			ID:       f.ID,
+			Callsign: f.Callsign,
+			Status:   f.Status,
+		}
+	}
+	return result
+}
+
+// FlightAirlineID returns the airline ID for a flight (simulates a FK lookup).
+func (s *Store) FlightAirlineID(flightID string) string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, f := range s.flights {
+		if f.ID == flightID {
+			return f.AirlineID
+		}
+	}
+	return ""
+}
+
+// FlightDepartureAirportID returns the departure airport ID for a flight.
+func (s *Store) FlightDepartureAirportID(flightID string) string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, f := range s.flights {
+		if f.ID == flightID {
+			return f.DepartureAirportID
+		}
+	}
+	return ""
+}
+
+// FlightArrivalAirportID returns the arrival airport ID for a flight.
+func (s *Store) FlightArrivalAirportID(flightID string) string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, f := range s.flights {
+		if f.ID == flightID {
+			return f.ArrivalAirportID
+		}
+	}
+	return ""
 }

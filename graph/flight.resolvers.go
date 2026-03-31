@@ -8,28 +8,32 @@ package graph
 import (
 	"context"
 
+	"github.com/nixmaldonado/skytrack/graph/dataloader"
 	"github.com/nixmaldonado/skytrack/graph/model"
 )
 
 // Airline is the resolver for the airline field.
 func (r *flightResolver) Airline(ctx context.Context, obj *model.Flight) (*model.Airline, error) {
-	// N+1: this runs once PER FLIGHT — 8 flights = 8 separate "queries"
+	// Using dataloaders to prevent N+1 bottlenecks
 	airlineID := r.Store.FlightAirlineID(obj.ID)
-	return r.Store.FindAirlineByID(airlineID), nil
+	thunk := dataloader.FromContext(ctx).AirlineLoader.Load(ctx, airlineID)
+	return thunk()
 }
 
 // DepartureAirport is the resolver for the departureAirport field.
 func (r *flightResolver) DepartureAirport(ctx context.Context, obj *model.Flight) (*model.Airport, error) {
-	// N+1: another query per flight
+	// Using dataloaders to prevent N+1 bottlenecks
 	airportID := r.Store.FlightDepartureAirportID(obj.ID)
-	return r.Store.FindAirportByID(airportID), nil
+	thunk := dataloader.FromContext(ctx).AirportLoader.Load(ctx, airportID)
+	return thunk()
 }
 
 // ArrivalAirport is the resolver for the arrivalAirport field.
 func (r *flightResolver) ArrivalAirport(ctx context.Context, obj *model.Flight) (*model.Airport, error) {
-	// N+1: another query per flight
+	// Using dataloaders to prevent N+1 bottlenecks
 	airportID := r.Store.FlightArrivalAirportID(obj.ID)
-	return r.Store.FindAirportByID(airportID), nil
+	thunk := dataloader.FromContext(ctx).AirportLoader.Load(ctx, airportID)
+	return thunk()
 }
 
 // Flights is the resolver for the flights field.

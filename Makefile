@@ -3,6 +3,9 @@
 generate:
 	go run github.com/99designs/gqlgen generate
 
+build:
+	go build ./...
+
 run:
 	go run cmd/server/main.go
 

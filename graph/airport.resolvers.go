@@ -8,8 +8,10 @@ package graph
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 	"strconv"
 
+	"github.com/nixmaldonado/skytrack/graph/dataloader"
 	"github.com/nixmaldonado/skytrack/graph/model"
 )
 
@@ -32,15 +34,19 @@ func (r *queryResolver) Airports(ctx context.Context, first *int, after *string)
 
 	airports := r.Store.All()
 
-	startIdx := 0
+	var startIdx int
 	if after != nil {
 		decoded, err := base64.StdEncoding.DecodeString(*after)
-		if err == nil {
-			idx, err := strconv.Atoi(string(decoded))
-			if err == nil {
-				startIdx = idx + 1
-			}
+		if err != nil {
+			return nil, fmt.Errorf("invalid cursor: %w", err)
 		}
+
+		idx, err := strconv.Atoi(string(decoded))
+		if err != nil {
+			return nil, fmt.Errorf("invalid cursor value: %w", err)
+		}
+
+		startIdx = idx + 1
 	}
 
 	total := len(airports)
@@ -85,7 +91,8 @@ func (r *queryResolver) Airports(ctx context.Context, first *int, after *string)
 
 // Airport is the resolver for the airport field.
 func (r *queryResolver) Airport(ctx context.Context, icao model.ICAOCode) (*model.Airport, error) {
-	return r.Store.FindByICAO(icao), nil
+	thunk := dataloader.FromContext(ctx).AirportLoader.Load(ctx, string(icao))
+	return thunk()
 }
 
 // AirportByIata is the resolver for the airportByIata field.

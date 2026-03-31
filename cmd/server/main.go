@@ -11,6 +11,8 @@ import (
 	"github.com/99designs/gqlgen/graphql/playground"
 
 	"github.com/nixmaldonado/skytrack/graph"
+	"github.com/nixmaldonado/skytrack/graph/dataloader"
+	"github.com/nixmaldonado/skytrack/internal/store"
 )
 
 func main() {
@@ -19,9 +21,11 @@ func main() {
 		port = "8080"
 	}
 
+	store := store.NewStore()
+
 	srv := handler.New(graph.NewExecutableSchema(graph.Config{
 		Resolvers: &graph.Resolver{
-			Store: graph.NewStore(),
+			Store: store,
 		},
 	}))
 	srv.AddTransport(transport.Options{})
@@ -31,7 +35,7 @@ func main() {
 	srv.Use(extension.Introspection{})
 
 	http.Handle("/", playground.Handler("SkyTrack", "/query"))
-	http.Handle("/query", srv)
+	http.Handle("/query", dataloader.Middleware(store, srv))
 
 	log.Printf("SkyTrack GraphQL playground at http://localhost:%s/", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))

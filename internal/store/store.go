@@ -1,4 +1,4 @@
-package graph
+package store
 
 import (
 	"fmt"
@@ -36,16 +36,76 @@ func NewStore() *Store {
 
 	store := &Store{
 		airports: []model.Airport{
-			{ID: "1", Icao: "KJFK", Iata: iata("JFK"), Name: "John F Kennedy International Airport", City: city("New York"), Country: "US", Latitude: 40.6398, Longitude: -73.7789, Elevation: elev(13), Type: model.AirportTypeLarge},
-			{ID: "2", Icao: "EGLL", Iata: iata("LHR"), Name: "Heathrow Airport", City: city("London"), Country: "GB", Latitude: 51.4706, Longitude: -0.4619, Elevation: elev(83), Type: model.AirportTypeLarge},
-			{ID: "3", Icao: "RJTT", Iata: iata("HND"), Name: "Tokyo Haneda Airport", City: city("Tokyo"), Country: "JP", Latitude: 35.5523, Longitude: 139.7798, Elevation: elev(35), Type: model.AirportTypeLarge},
-			{ID: "4", Icao: "LFPG", Iata: iata("CDG"), Name: "Charles de Gaulle Airport", City: city("Paris"), Country: "FR", Latitude: 49.0097, Longitude: 2.5479, Elevation: elev(392), Type: model.AirportTypeLarge},
-			{ID: "5", Icao: "KLAX", Iata: iata("LAX"), Name: "Los Angeles International Airport", City: city("Los Angeles"), Country: "US", Latitude: 33.9425, Longitude: -118.4081, Elevation: elev(126), Type: model.AirportTypeLarge},
-			{ID: "6", Icao: "OMDB", Iata: iata("DXB"), Name: "Dubai International Airport", City: city("Dubai"), Country: "AE", Latitude: 25.2528, Longitude: 55.3644, Elevation: elev(62), Type: model.AirportTypeLarge},
-			{ID: "7", Icao: "VHHH", Iata: iata("HKG"), Name: "Hong Kong International Airport", City: city("Hong Kong"), Country: "HK", Latitude: 22.3089, Longitude: 113.9145, Elevation: elev(28), Type: model.AirportTypeLarge},
-			{ID: "8", Icao: "WSSS", Iata: iata("SIN"), Name: "Singapore Changi Airport", City: city("Singapore"), Country: "SG", Latitude: 1.3502, Longitude: 103.9944, Elevation: elev(22), Type: model.AirportTypeLarge},
-			{ID: "9", Icao: "EDDF", Iata: iata("FRA"), Name: "Frankfurt Airport", City: city("Frankfurt"), Country: "DE", Latitude: 50.0333, Longitude: 8.5706, Elevation: elev(364), Type: model.AirportTypeLarge},
-			{ID: "10", Icao: "LEMD", Iata: iata("MAD"), Name: "Adolfo Suárez Madrid–Barajas Airport", City: city("Madrid"), Country: "ES", Latitude: 40.4719, Longitude: -3.5626, Elevation: elev(2000), Type: model.AirportTypeLarge},
+			{
+				ID: "1", Icao: "KJFK", Iata: iata("JFK"),
+				Name: "John F Kennedy International Airport",
+				City: city("New York"), Country: "US",
+				Latitude: 40.6398, Longitude: -73.7789,
+				Elevation: elev(13), Type: model.AirportTypeLarge,
+			},
+			{
+				ID: "2", Icao: "EGLL", Iata: iata("LHR"),
+				Name: "Heathrow Airport",
+				City: city("London"), Country: "GB",
+				Latitude: 51.4706, Longitude: -0.4619,
+				Elevation: elev(83), Type: model.AirportTypeLarge,
+			},
+			{
+				ID: "3", Icao: "RJTT", Iata: iata("HND"),
+				Name: "Tokyo Haneda Airport",
+				City: city("Tokyo"), Country: "JP",
+				Latitude: 35.5523, Longitude: 139.7798,
+				Elevation: elev(35), Type: model.AirportTypeLarge,
+			},
+			{
+				ID: "4", Icao: "LFPG", Iata: iata("CDG"),
+				Name: "Charles de Gaulle Airport",
+				City: city("Paris"), Country: "FR",
+				Latitude: 49.0097, Longitude: 2.5479,
+				Elevation: elev(392), Type: model.AirportTypeLarge,
+			},
+			{
+				ID: "5", Icao: "KLAX", Iata: iata("LAX"),
+				Name: "Los Angeles International Airport",
+				City: city("Los Angeles"), Country: "US",
+				Latitude: 33.9425, Longitude: -118.4081,
+				Elevation: elev(126), Type: model.AirportTypeLarge,
+			},
+			{
+				ID: "6", Icao: "OMDB", Iata: iata("DXB"),
+				Name: "Dubai International Airport",
+				City: city("Dubai"), Country: "AE",
+				Latitude: 25.2528, Longitude: 55.3644,
+				Elevation: elev(62), Type: model.AirportTypeLarge,
+			},
+			{
+				ID: "7", Icao: "VHHH", Iata: iata("HKG"),
+				Name: "Hong Kong International Airport",
+				City: city("Hong Kong"), Country: "HK",
+				Latitude: 22.3089, Longitude: 113.9145,
+				Elevation: elev(28), Type: model.AirportTypeLarge,
+			},
+			{
+				ID: "8", Icao: "WSSS", Iata: iata("SIN"),
+				Name: "Singapore Changi Airport",
+				City: city("Singapore"), Country: "SG",
+				Latitude: 1.3502, Longitude: 103.9944,
+				Elevation: elev(22), Type: model.AirportTypeLarge,
+			},
+			{
+				ID: "9", Icao: "EDDF", Iata: iata("FRA"),
+				Name: "Frankfurt Airport",
+				City: city("Frankfurt"), Country: "DE",
+				Latitude: 50.0333, Longitude: 8.5706,
+				Elevation: elev(364), Type: model.AirportTypeLarge,
+			},
+			{
+				ID: "10", Icao: "LEMD", Iata: iata("MAD"),
+				Name: "Adolfo Suárez Madrid–Barajas Airport",
+				City: city("Madrid"), Country: "ES",
+				Latitude: 40.4719, Longitude: -3.5626,
+				Elevation: elev(2000), Type: model.AirportTypeLarge,
+			},
 		},
 		airlines: []model.Airline{
 			{ID: "1", Icao: "AAL", Iata: str("AA"), Name: "American Airlines", Country: "US"},
@@ -189,7 +249,7 @@ func (s *Store) Search(query string) []model.Airport {
 	defer s.mu.RUnlock()
 
 	q := strings.ToLower(query)
-	var results []model.Airport
+	results := []model.Airport{}
 	for _, a := range s.airports {
 		if strings.Contains(strings.ToLower(a.Name), q) {
 			results = append(results, a)
@@ -270,4 +330,46 @@ func (s *Store) FlightArrivalAirportID(flightID string) string {
 		}
 	}
 	return ""
+}
+
+func (s *Store) FindAirlinesByIDs(ids []string) map[string]*model.Airline {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	s.log(fmt.Sprintf("SELECT * FROM airlines WHERE id IN (%s)", strings.Join(ids, ", ")))
+
+	idSet := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		idSet[id] = struct{}{}
+	}
+
+	result := make(map[string]*model.Airline, len(ids))
+	for _, a := range s.airlines {
+		if _, ok := idSet[a.ID]; ok {
+			result[a.ID] = &a
+		}
+	}
+
+	return result
+}
+
+func (s *Store) FindAirportsByIDs(ids []string) map[string]*model.Airport {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	s.log(fmt.Sprintf("SELECT * FROM airports WHERE id IN (%s)", strings.Join(ids, ", ")))
+
+	idSet := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		idSet[id] = struct{}{}
+	}
+
+	result := make(map[string]*model.Airport, len(ids))
+	for _, a := range s.airports {
+		if _, ok := idSet[a.ID]; ok {
+			result[a.ID] = &a
+		}
+	}
+
+	return result
 }

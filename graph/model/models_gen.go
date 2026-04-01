@@ -62,6 +62,24 @@ type Flight struct {
 	Status           FlightStatus `json:"status"`
 }
 
+type FlightConnection struct {
+	Edges      []FlightEdge `json:"edges"`
+	PageInfo   *PageInfo    `json:"pageInfo"`
+	TotalCount int          `json:"totalCount"`
+}
+
+type FlightEdge struct {
+	Cursor string  `json:"cursor"`
+	Node   *Flight `json:"node"`
+}
+
+type FlightFilter struct {
+	AirlineID          *string       `json:"airlineId,omitempty"`
+	DepartureAirportID *string       `json:"departureAirportId,omitempty"`
+	ArrivalAirportID   *string       `json:"arrivalAirportId,omitempty"`
+	Status             *FlightStatus `json:"status,omitempty"`
+}
+
 type Mutation struct {
 }
 

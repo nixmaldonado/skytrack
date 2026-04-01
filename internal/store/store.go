@@ -296,6 +296,42 @@ func (s *Store) AllFlights() []model.Flight {
 	return result
 }
 
+// FilteredFlights returns a filtered and paginated slice of flights plus total count after filtering.
+func (s *Store) FilteredFlights(filter *model.FlightFilter) ([]model.Flight, int) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	s.log("SELECT * FROM flights WHERE ...")
+
+	var filtered []model.Flight
+	for _, f := range s.flights {
+		if filter != nil {
+			if filter.AirlineID != nil && f.AirlineID != *filter.AirlineID {
+				continue
+			}
+			if filter.DepartureAirportID != nil && f.DepartureAirportID != *filter.DepartureAirportID {
+				continue
+			}
+			if filter.ArrivalAirportID != nil && f.ArrivalAirportID != *filter.ArrivalAirportID {
+				continue
+			}
+			if filter.Status != nil && f.Status != *filter.Status {
+				continue
+			}
+		}
+		filtered = append(filtered, model.Flight{
+			ID:       f.ID,
+			Callsign: f.Callsign,
+			Status:   f.Status,
+		})
+	}
+
+	if filtered == nil {
+		filtered = []model.Flight{}
+	}
+
+	return filtered, len(filtered)
+}
+
 // FlightAirlineID returns the airline ID for a flight (simulates a FK lookup).
 func (s *Store) FlightAirlineID(flightID string) string {
 	s.mu.RLock()

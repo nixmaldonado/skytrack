@@ -7,6 +7,9 @@ package graph
 
 import (
 	"context"
+	"encoding/base64"
+	"fmt"
+	"strconv"
 
 	"github.com/nixmaldonado/skytrack/graph/dataloader"
 	"github.com/nixmaldonado/skytrack/graph/model"
@@ -37,8 +40,64 @@ func (r *flightResolver) ArrivalAirport(ctx context.Context, obj *model.Flight) 
 }
 
 // Flights is the resolver for the flights field.
-func (r *queryResolver) Flights(ctx context.Context) ([]model.Flight, error) {
-	return r.Store.AllFlights(), nil
+func (r *queryResolver) Flights(ctx context.Context, first *int, after *string, filter *model.FlightFilter) (*model.FlightConnection, error) {
+	limit := 25
+	if first != nil {
+		limit = *first
+	}
+
+	flights, total := r.Store.FilteredFlights(filter)
+
+	var startIdx int
+	if after != nil {
+		decoded, err := base64.StdEncoding.DecodeString(*after)
+		if err != nil {
+			return nil, fmt.Errorf("invalid cursor: %w", err)
+		}
+		idx, err := strconv.Atoi(string(decoded))
+		if err != nil {
+			return nil, fmt.Errorf("invalid cursor value: %w", err)
+		}
+		startIdx = idx + 1
+	}
+
+	if startIdx > total {
+		startIdx = total
+	}
+	endIdx := startIdx + limit
+	if endIdx > total {
+		endIdx = total
+	}
+	page := flights[startIdx:endIdx]
+
+	edges := make([]model.FlightEdge, len(page))
+	for i, f := range page {
+		cursor := base64.StdEncoding.EncodeToString([]byte(strconv.Itoa(startIdx + i)))
+		flight := f
+		edges[i] = model.FlightEdge{
+			Cursor: cursor,
+			Node:   &flight,
+		}
+	}
+
+	hasNext := endIdx < total
+	hasPrev := startIdx > 0
+	var startCursor, endCursor *string
+	if len(edges) > 0 {
+		startCursor = &edges[0].Cursor
+		endCursor = &edges[len(edges)-1].Cursor
+	}
+
+	return &model.FlightConnection{
+		Edges: edges,
+		PageInfo: &model.PageInfo{
+			HasNextPage:     hasNext,
+			HasPreviousPage: hasPrev,
+			StartCursor:     startCursor,
+			EndCursor:       endCursor,
+		},
+		TotalCount: total,
+	}, nil
 }
 
 // Flight returns FlightResolver implementation.

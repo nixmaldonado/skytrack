@@ -1,5 +1,23 @@
 extend type Query {
-  flights: [Flight!]!
+  flights(first: Int = 25, after: String, filter: FlightFilter): FlightConnection!
+}
+
+input FlightFilter {
+  airlineId: ID
+  departureAirportId: ID
+  arrivalAirportId: ID
+  status: FlightStatus
+}
+
+type FlightConnection {
+  edges: [FlightEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type FlightEdge {
+  cursor: String!
+  node: Flight!
 }
 
 type Flight {

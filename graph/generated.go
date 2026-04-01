@@ -78,6 +78,17 @@ type ComplexityRoot struct {
 		Status           func(childComplexity int) int
 	}
 
+	FlightConnection struct {
+		Edges      func(childComplexity int) int
+		PageInfo   func(childComplexity int) int
+		TotalCount func(childComplexity int) int
+	}
+
+	FlightEdge struct {
+		Cursor func(childComplexity int) int
+		Node   func(childComplexity int) int
+	}
+
 	Mutation struct {
 		CreateAirport func(childComplexity int, input model.CreateAirportInput) int
 		UpdateAirport func(childComplexity int, icao model.ICAOCode, input model.UpdateAirportInput) int
@@ -94,7 +105,7 @@ type ComplexityRoot struct {
 		Airport        func(childComplexity int, icao model.ICAOCode) int
 		AirportByIata  func(childComplexity int, iata model.IATACode) int
 		Airports       func(childComplexity int, first *int, after *string) int
-		Flights        func(childComplexity int) int
+		Flights        func(childComplexity int, first *int, after *string, filter *model.FlightFilter) int
 		SearchAirports func(childComplexity int, query string) int
 	}
 }
@@ -113,7 +124,7 @@ type QueryResolver interface {
 	Airport(ctx context.Context, icao model.ICAOCode) (*model.Airport, error)
 	AirportByIata(ctx context.Context, iata model.IATACode) (*model.Airport, error)
 	SearchAirports(ctx context.Context, query string) ([]model.Airport, error)
-	Flights(ctx context.Context) ([]model.Flight, error)
+	Flights(ctx context.Context, first *int, after *string, filter *model.FlightFilter) (*model.FlightConnection, error)
 }
 
 type executableSchema graphql.ExecutableSchemaState[ResolverRoot, DirectiveRoot, ComplexityRoot]
@@ -291,6 +302,38 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Flight.Status(childComplexity), true
 
+	case "FlightConnection.edges":
+		if e.ComplexityRoot.FlightConnection.Edges == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FlightConnection.Edges(childComplexity), true
+	case "FlightConnection.pageInfo":
+		if e.ComplexityRoot.FlightConnection.PageInfo == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FlightConnection.PageInfo(childComplexity), true
+	case "FlightConnection.totalCount":
+		if e.ComplexityRoot.FlightConnection.TotalCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FlightConnection.TotalCount(childComplexity), true
+
+	case "FlightEdge.cursor":
+		if e.ComplexityRoot.FlightEdge.Cursor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FlightEdge.Cursor(childComplexity), true
+	case "FlightEdge.node":
+		if e.ComplexityRoot.FlightEdge.Node == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FlightEdge.Node(childComplexity), true
+
 	case "Mutation.createAirport":
 		if e.ComplexityRoot.Mutation.CreateAirport == nil {
 			break
@@ -377,7 +420,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			break
 		}
 
-		return e.ComplexityRoot.Query.Flights(childComplexity), true
+		args, err := ec.field_Query_flights_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.Flights(childComplexity, args["first"].(*int), args["after"].(*string), args["filter"].(*model.FlightFilter)), true
 
 	case "Query.searchAirports":
 		if e.ComplexityRoot.Query.SearchAirports == nil {
@@ -400,6 +448,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	ec := newExecutionContext(opCtx, e, make(chan graphql.DeferredResult))
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputCreateAirportInput,
+		ec.unmarshalInputFlightFilter,
 		ec.unmarshalInputUpdateAirportInput,
 	)
 	first := true
@@ -571,6 +620,27 @@ func (ec *executionContext) field_Query_airports_args(ctx context.Context, rawAr
 		return nil, err
 	}
 	args["after"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_flights_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "first", ec.unmarshalOInt2ᚖint)
+	if err != nil {
+		return nil, err
+	}
+	args["first"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "after", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["after"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "filter", ec.unmarshalOFlightFilter2ᚖgithubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐFlightFilter)
+	if err != nil {
+		return nil, err
+	}
+	args["filter"] = arg2
 	return args, nil
 }
 
@@ -1485,6 +1555,181 @@ func (ec *executionContext) fieldContext_Flight_status(_ context.Context, field 
 	return fc, nil
 }
 
+func (ec *executionContext) _FlightConnection_edges(ctx context.Context, field graphql.CollectedField, obj *model.FlightConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FlightConnection_edges,
+		func(ctx context.Context) (any, error) {
+			return obj.Edges, nil
+		},
+		nil,
+		ec.marshalNFlightEdge2ᚕgithubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐFlightEdgeᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FlightConnection_edges(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FlightConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "cursor":
+				return ec.fieldContext_FlightEdge_cursor(ctx, field)
+			case "node":
+				return ec.fieldContext_FlightEdge_node(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type FlightEdge", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FlightConnection_pageInfo(ctx context.Context, field graphql.CollectedField, obj *model.FlightConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FlightConnection_pageInfo,
+		func(ctx context.Context) (any, error) {
+			return obj.PageInfo, nil
+		},
+		nil,
+		ec.marshalNPageInfo2ᚖgithubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐPageInfo,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FlightConnection_pageInfo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FlightConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "hasNextPage":
+				return ec.fieldContext_PageInfo_hasNextPage(ctx, field)
+			case "hasPreviousPage":
+				return ec.fieldContext_PageInfo_hasPreviousPage(ctx, field)
+			case "startCursor":
+				return ec.fieldContext_PageInfo_startCursor(ctx, field)
+			case "endCursor":
+				return ec.fieldContext_PageInfo_endCursor(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PageInfo", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FlightConnection_totalCount(ctx context.Context, field graphql.CollectedField, obj *model.FlightConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FlightConnection_totalCount,
+		func(ctx context.Context) (any, error) {
+			return obj.TotalCount, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FlightConnection_totalCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FlightConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FlightEdge_cursor(ctx context.Context, field graphql.CollectedField, obj *model.FlightEdge) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FlightEdge_cursor,
+		func(ctx context.Context) (any, error) {
+			return obj.Cursor, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FlightEdge_cursor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FlightEdge",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FlightEdge_node(ctx context.Context, field graphql.CollectedField, obj *model.FlightEdge) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FlightEdge_node,
+		func(ctx context.Context) (any, error) {
+			return obj.Node, nil
+		},
+		nil,
+		ec.marshalNFlight2ᚖgithubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐFlight,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FlightEdge_node(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FlightEdge",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Flight_id(ctx, field)
+			case "callsign":
+				return ec.fieldContext_Flight_callsign(ctx, field)
+			case "airline":
+				return ec.fieldContext_Flight_airline(ctx, field)
+			case "departureAirport":
+				return ec.fieldContext_Flight_departureAirport(ctx, field)
+			case "arrivalAirport":
+				return ec.fieldContext_Flight_arrivalAirport(ctx, field)
+			case "status":
+				return ec.fieldContext_Flight_status(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Flight", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_createAirport(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -1972,16 +2217,17 @@ func (ec *executionContext) _Query_flights(ctx context.Context, field graphql.Co
 		field,
 		ec.fieldContext_Query_flights,
 		func(ctx context.Context) (any, error) {
-			return ec.Resolvers.Query().Flights(ctx)
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().Flights(ctx, fc.Args["first"].(*int), fc.Args["after"].(*string), fc.Args["filter"].(*model.FlightFilter))
 		},
 		nil,
-		ec.marshalNFlight2ᚕgithubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐFlightᚄ,
+		ec.marshalNFlightConnection2ᚖgithubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐFlightConnection,
 		true,
 		true,
 	)
 }
 
-func (ec *executionContext) fieldContext_Query_flights(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_flights(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -1989,21 +2235,26 @@ func (ec *executionContext) fieldContext_Query_flights(_ context.Context, field 
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_Flight_id(ctx, field)
-			case "callsign":
-				return ec.fieldContext_Flight_callsign(ctx, field)
-			case "airline":
-				return ec.fieldContext_Flight_airline(ctx, field)
-			case "departureAirport":
-				return ec.fieldContext_Flight_departureAirport(ctx, field)
-			case "arrivalAirport":
-				return ec.fieldContext_Flight_arrivalAirport(ctx, field)
-			case "status":
-				return ec.fieldContext_Flight_status(ctx, field)
+			case "edges":
+				return ec.fieldContext_FlightConnection_edges(ctx, field)
+			case "pageInfo":
+				return ec.fieldContext_FlightConnection_pageInfo(ctx, field)
+			case "totalCount":
+				return ec.fieldContext_FlightConnection_totalCount(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type Flight", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type FlightConnection", field.Name)
 		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_flights_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -3648,6 +3899,57 @@ func (ec *executionContext) unmarshalInputCreateAirportInput(ctx context.Context
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputFlightFilter(ctx context.Context, obj any) (model.FlightFilter, error) {
+	var it model.FlightFilter
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"airlineId", "departureAirportId", "arrivalAirportId", "status"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "airlineId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("airlineId"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AirlineID = data
+		case "departureAirportId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("departureAirportId"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DepartureAirportID = data
+		case "arrivalAirportId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("arrivalAirportId"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ArrivalAirportID = data
+		case "status":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
+			data, err := ec.unmarshalOFlightStatus2ᚖgithubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐFlightStatus(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Status = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateAirportInput(ctx context.Context, obj any) (model.UpdateAirportInput, error) {
 	var it model.UpdateAirportInput
 	if obj == nil {
@@ -4083,6 +4385,99 @@ func (ec *executionContext) _Flight(ctx context.Context, sel ast.SelectionSet, o
 			out.Values[i] = ec._Flight_status(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var flightConnectionImplementors = []string{"FlightConnection"}
+
+func (ec *executionContext) _FlightConnection(ctx context.Context, sel ast.SelectionSet, obj *model.FlightConnection) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, flightConnectionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FlightConnection")
+		case "edges":
+			out.Values[i] = ec._FlightConnection_edges(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "pageInfo":
+			out.Values[i] = ec._FlightConnection_pageInfo(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalCount":
+			out.Values[i] = ec._FlightConnection_totalCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var flightEdgeImplementors = []string{"FlightEdge"}
+
+func (ec *executionContext) _FlightEdge(ctx context.Context, sel ast.SelectionSet, obj *model.FlightEdge) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, flightEdgeImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FlightEdge")
+		case "cursor":
+			out.Values[i] = ec._FlightEdge_cursor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "node":
+			out.Values[i] = ec._FlightEdge_node(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -4795,15 +5190,39 @@ func (ec *executionContext) unmarshalNCreateAirportInput2githubᚗcomᚋnixmaldo
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNFlight2githubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐFlight(ctx context.Context, sel ast.SelectionSet, v model.Flight) graphql.Marshaler {
-	return ec._Flight(ctx, sel, &v)
+func (ec *executionContext) marshalNFlight2ᚖgithubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐFlight(ctx context.Context, sel ast.SelectionSet, v *model.Flight) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Flight(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNFlight2ᚕgithubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐFlightᚄ(ctx context.Context, sel ast.SelectionSet, v []model.Flight) graphql.Marshaler {
+func (ec *executionContext) marshalNFlightConnection2githubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐFlightConnection(ctx context.Context, sel ast.SelectionSet, v model.FlightConnection) graphql.Marshaler {
+	return ec._FlightConnection(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNFlightConnection2ᚖgithubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐFlightConnection(ctx context.Context, sel ast.SelectionSet, v *model.FlightConnection) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._FlightConnection(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNFlightEdge2githubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐFlightEdge(ctx context.Context, sel ast.SelectionSet, v model.FlightEdge) graphql.Marshaler {
+	return ec._FlightEdge(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNFlightEdge2ᚕgithubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐFlightEdgeᚄ(ctx context.Context, sel ast.SelectionSet, v []model.FlightEdge) graphql.Marshaler {
 	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
 		fc := graphql.GetFieldContext(ctx)
 		fc.Result = &v[i]
-		return ec.marshalNFlight2githubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐFlight(ctx, sel, v[i])
+		return ec.marshalNFlightEdge2githubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐFlightEdge(ctx, sel, v[i])
 	})
 
 	for _, e := range ret {
@@ -5137,6 +5556,30 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return res
 }
 
+func (ec *executionContext) unmarshalOFlightFilter2ᚖgithubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐFlightFilter(ctx context.Context, v any) (*model.FlightFilter, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputFlightFilter(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOFlightStatus2ᚖgithubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐFlightStatus(ctx context.Context, v any) (*model.FlightStatus, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(model.FlightStatus)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOFlightStatus2ᚖgithubᚗcomᚋnixmaldonadoᚋskytrackᚋgraphᚋmodelᚐFlightStatus(ctx context.Context, sel ast.SelectionSet, v *model.FlightStatus) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
 func (ec *executionContext) unmarshalOFloat2ᚖfloat64(ctx context.Context, v any) (*float64, error) {
 	if v == nil {
 		return nil, nil
@@ -5169,6 +5612,24 @@ func (ec *executionContext) marshalOIATACode2ᚖgithubᚗcomᚋnixmaldonadoᚋsk
 	_ = sel
 	_ = ctx
 	res := model.MarshalIATACode(*v)
+	return res
+}
+
+func (ec *executionContext) unmarshalOID2ᚖstring(ctx context.Context, v any) (*string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalID(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOID2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalID(*v)
 	return res
 }
 

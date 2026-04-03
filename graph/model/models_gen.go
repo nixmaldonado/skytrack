@@ -80,6 +80,19 @@ type FlightFilter struct {
 	Status             *FlightStatus `json:"status,omitempty"`
 }
 
+type FlightPosition struct {
+	Icao24       string   `json:"icao24"`
+	Callsign     *string  `json:"callsign,omitempty"`
+	Latitude     *float64 `json:"latitude,omitempty"`
+	Longitude    *float64 `json:"longitude,omitempty"`
+	Altitude     *float64 `json:"altitude,omitempty"`
+	Velocity     *float64 `json:"velocity,omitempty"`
+	Heading      *float64 `json:"heading,omitempty"`
+	VerticalRate *float64 `json:"verticalRate,omitempty"`
+	OnGround     bool     `json:"onGround"`
+	Timestamp    int      `json:"timestamp"`
+}
+
 type Mutation struct {
 }
 
@@ -91,6 +104,9 @@ type PageInfo struct {
 }
 
 type Query struct {
+}
+
+type Subscription struct {
 }
 
 type UpdateAirportInput struct {

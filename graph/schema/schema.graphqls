@@ -3,6 +3,7 @@ scalar IATACode
 
 type Query
 type Mutation
+type Subscription
 
 type PageInfo {
   hasNextPage: Boolean!

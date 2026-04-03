@@ -1,0 +1,16 @@
+extend type Subscription {
+  trackFlight(icao24: String!): FlightPosition!
+}
+
+type FlightPosition {
+  icao24: String!
+  callsign: String
+  latitude: Float
+  longitude: Float
+  altitude: Float
+  velocity: Float
+  heading: Float
+  verticalRate: Float
+  onGround: Boolean!
+  timestamp: Int!
+}
